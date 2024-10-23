@@ -87,8 +87,8 @@ module.exports = (sequelize, DataTypes) => {
 
       Product.belongsTo(models.Category, {
         foreignKey: 'categoryId',
-        onDelete: 'SET NULL',
-        onUpdate: 'CASCADE',
+        // onDelete: 'SET NULL',
+        // onUpdate: 'CASCADE',
         as: 'Category'
       });
     }

@@ -43,26 +43,19 @@ cloudinary.config({
 
 	const readall = async (req, res) => {
 		try {
-
-			const {title} = req.query;
-
-			let whereClause = {};
-
-			if(title){
-				whereClause.title = {
-					[Op.iLike]: `%${title}%`
-				};
-			}
+			const limit = req.query.limit || 10;
+			const offset = req.query.offset;
 
 			const records = await Product.findAll({
-				where: whereClause,
-				include:[{model:Purchase, as: 'Purchase'},{model:Review, as: 'Review'}]
+			
+               // include:{model:Product, as: 'Product'}
 			});
 			return res.json(records);
 		} catch (e) {
 			return res.json({ msg: "fail to read", status: 500, route: "/read" });
 		}
 	}
+
 
 	const readId = async (req, res) => {
 		try {
