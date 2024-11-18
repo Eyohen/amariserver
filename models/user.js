@@ -41,7 +41,7 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: false
     },
-    city: {
+    lga: {
       type: DataTypes.STRING,
       allowNull: true
     },

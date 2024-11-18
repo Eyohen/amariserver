@@ -7,6 +7,7 @@ const purchase =  require('./route/purchase');
 const category =  require('./route/category');
 const review = require('./route/review');
 const blog = require('./route/blog');
+const cart = require('./route/cart');
 
 
 
@@ -54,7 +55,8 @@ app.use("/api/products", product);
 app.use("/api/purchases", purchase);
 app.use("/api/categories", category);
 app.use("/api/reviews", review);
-app.use("/api/posts", blog)
+app.use("/api/posts", blog);
+app.use("/api/cart", cart)
 
 
 

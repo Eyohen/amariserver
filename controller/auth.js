@@ -29,7 +29,7 @@ const { User } = db;
 
   const login = async (req, res) => {
     try {
-      const { firstName, lastName, email, password } = req.body;
+      const { firstName, lastName, email, password, lga, address } = req.body;
 
       // Check if user with the given email exists
       const user = await User.findOne({ where: { email } });
@@ -47,7 +47,9 @@ const { User } = db;
         id: user.id,
         email: user.email,
         fname: user.firstName,
-        lname: user.lastName
+        lname: user.lastName,
+        lga: user.lga,
+        address: user.address
       };
 
       // Generate JWT token with user object
@@ -96,7 +98,9 @@ const { User } = db;
         id: user.id,
         email: user.email,
         fname: user.firstName,
-        lname: user.lastName
+        lname: user.lastName,
+        lga: user.lga,
+        address: user.address
       };
 
       // Generate JWT token with user object

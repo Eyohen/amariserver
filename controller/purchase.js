@@ -7,9 +7,10 @@ const path = require("path");
 const { uploadtocloudinary, uploadType } = require("../middleware/cloudinary");
 const db = require("../models");
 const { totalmem } = require("os");
-const { Purchase, User, Product } = db;
+const { Purchase, User, Product, Cart } = db;
 const { Op } = require('sequelize');
 const sendEmail = require('../utils/sendEmail.js')
+const sequelize = db.sequelize;
 
 
 cloudinary.config({
@@ -19,61 +20,143 @@ cloudinary.config({
 });
 
 
-	const create = async (req, res) => {
-		try {
-			// if (!req.body.user) {
-			// 	return res.status(404).json({ msg: "User not found" });
-			// }
+// const create = async (req, res) => {
+// 	try {
+// 	  const { email, fname, userId, totalAmount, items } = req.body;
+  
+// 	  if (!items || !Array.isArray(items) || items.length === 0) {
+// 		return res.status(400).json({ msg: "No items provided for purchase" });
+// 	  }
+  
+// 	  // Create purchases for each item
+// 	  const purchasePromises = items.map(async (item) => {
+// 		// Validate product exists and get current price
+// 		const cart = await Cart.findByPk(item.cartId);
+// 		if (!cart) {
+// 		  throw new Error(`Product not found for ID: ${item.cartId}`);
+// 		}
+  
+// 		// Calculate final price considering discount
+// 		const finalPrice = item.discount && item.discount > 0 ? item.discount : item.price;
+  
+// 		return Purchase.create({
+// 		  id: uuidv4(), // Make sure you have uuidv4 imported
+// 		  email,
+// 		  fname,
+// 		  userId,
+// 		  cartId: item.cartId,
+// 		  title: item.title,
+// 		  description: item.description,
+// 		  price: finalPrice,
+// 		  discount: item.discount,
+// 		  color: item.color,
+// 		  size: item.size,
+// 		  quantity: item.quantity,
+// 		  totalPrice: finalPrice * item.quantity,
+// 		  totalAmount
+// 		});
+// 	  });
+  
+// 	  // Wait for all purchases to be created
+// 	  const purchases = await Promise.all(purchasePromises);
+  
+// 	  // Send email confirmation
+// 	  await sendEmail(
+// 		"henry.eyo2@gmail.com",
+// 		email,
+// 		"Order Confirmation",
+// 		"Order Confirmed!",
+// 		fname,
+// 		purchases.map(p => p.title).join(', '),
+// 		purchases.reduce((sum, p) => sum + p.quantity, 0),
+// 		purchases.reduce((sum, p) => sum + p.price, 0),
+// 		totalAmount
+// 	  );
+  
+// 	  return res.status(200).json({
+// 		purchases,
+// 		msg: "Successfully created purchases, check your email to see your receipt"
+// 	  });
+// 	} catch (error) {
+// 	  console.error("Purchase creation error:", error);
+// 	  return res.status(500).json({
+// 		msg: "Failed to create purchase",
+// 		error: error.message
+// 	  });
+// 	}
+//   };
 
-			const {email, fname, title, price, discount, description, color, size, imageUrl, quantity, totalPrice, productId } = req.body;
 
-			// fetch the product from the database
-			const product = await Product.findByPk(productId);
-			if(!product){
-				return res.status(404).json({msg:"Product not found"});
-			}
-
-			// Calculate the final price considering the discount
-			let finalPrice = product.price;
-			if(product.discount && product.discount > 0 && product.discount < product.price){
-				finalPrice = product.discount;
-			}
-
-			
-
-			// Check if image was uploaded
-			let imageurl = '';
-			if (req.file) {
-				console.log(req.file);
-				// Upload image to Cloudinary
-				const uploadresult = await uploadtocloudinary(req.file.buffer);
-				if (uploadresult.message === "error") {
-					throw new Error(uploadresult.error.message);
-				}
-				imageurl = uploadresult.url;
-			}
-
-            // let user = await Purchase.findOne({email:req.body.email});
-
-
-     
-
-			// create Purchase record in the database
-			const record = await Purchase.create({email:req.body.email, imageUrl: imageurl, fname, title, price:finalPrice, quantity, totalPrice:finalPrice * quantity, ...req.body });
-
-            await sendEmail( "henry.eyo2@gmail.com", record.email, "Order Confirmation",
-                 "Order Confirmed!", record.fname, record.title, record.quantity, record.price, record.totalPrice);
-            
-            // await sendEmail( "henry.eyo2@gmail.com", "henry.eyo2@gmail.com", "Order Confirmation",
-            //     "Heres you receipt!");
-
-
-			return res.status(200).json({ record, msg: "Successfully create Purchase, check your email to see your receipt" });
-		} catch (error) {
-			console.log("henry", error);
-			return res.status(500).json({ msg: "fail to create", error });
+const create = async (req, res) => {
+	const transaction = await sequelize.transaction();
+  
+	try {
+	  const { email, fname, userId, totalAmount, items } = req.body;
+  
+	  if (!items || !Array.isArray(items) || items.length === 0) {
+		return res.status(400).json({ msg: "No items provided for purchase" });
+	  }
+  
+	  // Validate all cart items exist before proceeding
+	  for (const item of items) {
+		const cart = await Cart.findByPk(item.cartId);
+		if (!cart) {
+		  await transaction.rollback();
+		  return res.status(404).json({ msg: `Cart item not found for ID: ${item.cartId}` });
 		}
+	  }
+  
+	  // Create a single purchase with all items
+	  const purchase = await Purchase.create({
+		id: uuidv4(),
+		email,
+		fname,
+		userId,
+		items: items.map(item => ({
+		  cartId: item.cartId,
+		  title: item.title,
+		  description: item.description,
+		  price: item.discount || item.price,
+		  discount: item.discount,
+		  color: item.color,
+		  size: item.size,
+		  quantity: item.quantity,
+		  totalPrice: item.totalPrice
+		})),
+		totalAmount,
+		status: 'completed'
+	  }, { transaction });
+  
+	  await transaction.commit();
+  
+	  // Send email confirmation
+	  await sendEmail(
+		"henry.eyo2@gmail.com",
+		email,
+		"Order Confirmation",
+		"Order Confirmed!",
+		fname,
+		`Order ID: ${purchase.id}`,
+		purchase.items.reduce((sum, item) => sum + item.quantity, 0),
+		totalAmount,
+		totalAmount
+	  );
+  
+	  return res.status(200).json({
+		purchase,
+		msg: "Successfully created purchase, check your email to see your receipt"
+	  });
+	} catch (error) {
+	  await transaction.rollback();
+	  console.error("Purchase creation error:", error);
+	  return res.status(500).json({
+		msg: "Failed to create purchase",
+		error: error.message
+	  });
 	}
+  };
+  
+	
 
 	const readall = async (req, res) => {
 		try {
