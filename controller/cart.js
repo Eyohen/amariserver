@@ -9,7 +9,7 @@ const db = require("../models");
 const { totalmem } = require("os");
 const { Cart, User, Product } = db;
 const { Op } = require('sequelize');
-const sendEmail = require('../utils/sendEmail.js')
+
 
 
 cloudinary.config({
@@ -50,13 +50,6 @@ cloudinary.config({
 
 			// create Cart record in the database
 			const record = await Cart.create({email:req.body.email, imageUrl: imageurl, fname, title, price:finalPrice, quantity, totalPrice:finalPrice * quantity, ...req.body });
-
-            await sendEmail( "henry.eyo2@gmail.com", record.email, "Order Confirmation",
-                 "Order Confirmed!", record.fname, record.title, record.quantity, record.price, record.totalPrice);
-            
-            // await sendEmail( "henry.eyo2@gmail.com", "henry.eyo2@gmail.com", "Order Confirmation",
-            //     "Heres you receipt!");
-
 
 			return res.status(200).json({ record, msg: "Successfully create Cart, check your email to see your receipt" });
 		} catch (error) {

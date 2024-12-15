@@ -2,37 +2,36 @@
 const { Model, UUIDV4 } = require('sequelize');
 
 module.exports = (sequelize, DataTypes) => {
-  class Category extends Model {
+  class DeliveryRate extends Model {
     static associate(models) {
-      // define the assiociation here
 
-      Category.hasMany(models.Product, {
-        foreignKey: 'categoryId',
-        as: 'Product' // updated alias
-      });
+    //   DeliveryRate.belongsTo(models.Category, {
+    //     foreignKey: 'categoryId',
+    //     as: 'Category'
+    //   });
     }
   }
-  
-  Category.init({
+
+  DeliveryRate.init({
     id: {
       type: DataTypes.UUID,
       defaultValue: UUIDV4,
       primaryKey: true,
-      allowNull: false,
-      
+      allowNull: false
     },
-    name: {
+    lga: {
       type: DataTypes.STRING,
       allowNull: false
     },
-    imageUrl: {
-      type: DataTypes.STRING,
+    deliveryCharge: {
+      type: DataTypes.FLOAT,
       allowNull: true
-    }
+    },
+   
   }, {
     sequelize,
-    modelName: 'Category',
+    modelName: 'DeliveryRate',
   });
-  
-  return Category;
+
+  return DeliveryRate;
 };

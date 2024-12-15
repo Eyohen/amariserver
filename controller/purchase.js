@@ -9,7 +9,7 @@ const db = require("../models");
 const { totalmem } = require("os");
 const { Purchase, User, Product, Cart } = db;
 const { Op } = require('sequelize');
-const sendEmail = require('../utils/sendEmail.js')
+const sendReceipt = require('../utils/sendReceipt.js')
 const sequelize = db.sequelize;
 
 
@@ -20,78 +20,11 @@ cloudinary.config({
 });
 
 
-// const create = async (req, res) => {
-// 	try {
-// 	  const { email, fname, userId, totalAmount, items } = req.body;
-  
-// 	  if (!items || !Array.isArray(items) || items.length === 0) {
-// 		return res.status(400).json({ msg: "No items provided for purchase" });
-// 	  }
-  
-// 	  // Create purchases for each item
-// 	  const purchasePromises = items.map(async (item) => {
-// 		// Validate product exists and get current price
-// 		const cart = await Cart.findByPk(item.cartId);
-// 		if (!cart) {
-// 		  throw new Error(`Product not found for ID: ${item.cartId}`);
-// 		}
-  
-// 		// Calculate final price considering discount
-// 		const finalPrice = item.discount && item.discount > 0 ? item.discount : item.price;
-  
-// 		return Purchase.create({
-// 		  id: uuidv4(), // Make sure you have uuidv4 imported
-// 		  email,
-// 		  fname,
-// 		  userId,
-// 		  cartId: item.cartId,
-// 		  title: item.title,
-// 		  description: item.description,
-// 		  price: finalPrice,
-// 		  discount: item.discount,
-// 		  color: item.color,
-// 		  size: item.size,
-// 		  quantity: item.quantity,
-// 		  totalPrice: finalPrice * item.quantity,
-// 		  totalAmount
-// 		});
-// 	  });
-  
-// 	  // Wait for all purchases to be created
-// 	  const purchases = await Promise.all(purchasePromises);
-  
-// 	  // Send email confirmation
-// 	  await sendEmail(
-// 		"henry.eyo2@gmail.com",
-// 		email,
-// 		"Order Confirmation",
-// 		"Order Confirmed!",
-// 		fname,
-// 		purchases.map(p => p.title).join(', '),
-// 		purchases.reduce((sum, p) => sum + p.quantity, 0),
-// 		purchases.reduce((sum, p) => sum + p.price, 0),
-// 		totalAmount
-// 	  );
-  
-// 	  return res.status(200).json({
-// 		purchases,
-// 		msg: "Successfully created purchases, check your email to see your receipt"
-// 	  });
-// 	} catch (error) {
-// 	  console.error("Purchase creation error:", error);
-// 	  return res.status(500).json({
-// 		msg: "Failed to create purchase",
-// 		error: error.message
-// 	  });
-// 	}
-//   };
-
-
 const create = async (req, res) => {
 	const transaction = await sequelize.transaction();
   
 	try {
-	  const { email, fname, userId, totalAmount, items } = req.body;
+	  const { email, fname, address, userId, totalAmount, items } = req.body;
   
 	  if (!items || !Array.isArray(items) || items.length === 0) {
 		return res.status(400).json({ msg: "No items provided for purchase" });
@@ -111,6 +44,7 @@ const create = async (req, res) => {
 		id: uuidv4(),
 		email,
 		fname,
+		address,
 		userId,
 		items: items.map(item => ({
 		  cartId: item.cartId,
@@ -130,7 +64,7 @@ const create = async (req, res) => {
 	  await transaction.commit();
   
 	  // Send email confirmation
-	  await sendEmail(
+	  await sendReceipt(
 		"henry.eyo2@gmail.com",
 		email,
 		"Order Confirmation",
@@ -139,7 +73,8 @@ const create = async (req, res) => {
 		`Order ID: ${purchase.id}`,
 		purchase.items.reduce((sum, item) => sum + item.quantity, 0),
 		totalAmount,
-		totalAmount
+		purchase.items,
+		address
 	  );
   
 	  return res.status(200).json({
